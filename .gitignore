@@ -1,0 +1,61 @@
+# Archivos generados (cache y visualizaciones)
+output/
+
+# My data
+data/mis_jugadas_quini6.csv
+data/mis_jugadas_telekino.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Entorno virtual
+venv/
+env/
+ENV/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Logs
+*.log
+logs/
+
+# Variables de entorno
+.env
+.env.local
+
+# Flask
+instance/
+.webassets-cache
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de respaldo
+*.bak
+*.backup
+*.backup[0-9]
+
+# Archivos temporales del sistema
+Thumbs.db
+.DS_Store

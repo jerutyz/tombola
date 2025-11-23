@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}Quini 6 - Tombola Analytics{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-trophy-fill text-warning"></i> Quini 6
+    </h2>
+    <!-- Scraping y verificación deshabilitados - usar CLI -->
+    <!-- python main.py quini6 scrape -->
+    <!-- python main.py quini6 verificar -->
+</div>
+
+<!-- Similar structure to telekino.html but for Quini 6 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-end">
+            <div class="col-md-6">
+                <label for="fechaFiltro" class="form-label">
+                    <i class="bi bi-calendar-date"></i> Filtrar hasta fecha (Backtesting)
+                </label>
+                <input type="date" class="form-control" id="fechaFiltro">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-success w-100" id="loadStatsBtn">
+                    <i class="bi bi-graph-up"></i> Cargar Stats
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-secondary w-100" id="clearFilterBtn">
+                    <i class="bi bi-x-circle"></i> Limpiar Filtro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loading" class="text-center my-5" style="display: none;">
+    <div class="spinner-border text-warning" role="status">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2">Cargando estadísticas...</p>
+</div>
+
+<div id="statsContainer" style="display: none;">
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h5 class="text-muted">Sorteos</h5>
+                    <h2 id="sorteosCount" class="text-warning">-</h2>
+                </div>
+                <div class="col-md-3">
+                    <h5 class="text-muted">Sub-sorteos</h5>
+                    <h2 id="subsorteosCount" class="text-info">-</h2>
+                </div>
+                <div class="col-md-3">
+                    <h5 class="text-muted">Filtro</h5>
+                    <h6 id="filtroInfo" class="text-success">-</h6>
+                </div>
+                <div class="col-md-3">
+                    <h5 class="text-muted">Caché</h5>
+                    <span id="cacheInfo" class="badge bg-info">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-fire"></i> Top 10 - Números Calientes
+                </div>
+                <div class="card-body">
+                    <canvas id="calientesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-snow"></i> Top 10 - Números Fríos
+                </div>
+                <div class="card-body">
+                    <canvas id="friosChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-hourglass-split"></i> Top 10 - Omisión
+                </div>
+                <div class="card-body">
+                    <canvas id="omisionChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-clock-history"></i> Top 10 - Demora Máxima Histórica
+                </div>
+                <div class="card-body">
+                    <canvas id="demoraChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> Mapa de Calor - Frecuencias (Todas las modalidades)
+                </div>
+                <div class="card-body text-center">
+                    <img id="heatmapImg" src="/api/quini6/heatmap" alt="Mapa de calor Quini 6" class="img-fluid"
+                        style="max-width: 100%; height: auto;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sorteos Table Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-list-ol"></i> Histórico de Sorteos
+                </div>
+                <div class="card-body">
+                    <!-- Filtro -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="sorteosDateFilter" class="form-label">Filtrar por fecha</label>
+                            <input type="date" class="form-control" id="sorteosDateFilter">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-warning w-100" id="filterSorteosBtn">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-secondary w-100" id="clearSorteosFilterBtn">
+                                <i class="bi bi-x-circle"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">Sorteo</th>
+                                    <th style="width: 12%;">Fecha</th>
+                                    <th>Modalidad</th>
+                                    <th>Números (6 bolillas)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sorteosTableBody">
+                                <tr>
+                                    <td colspan="4" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginación -->
+                    <nav>
+                        <ul class="pagination justify-content-center" id="sorteosPagination">
+                            <!-- Populated by JavaScript -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="alertContainer"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let charts = {};
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadStats();
+    });
+
+    document.getElementById('loadStatsBtn').addEventListener('click', function () {
+        loadStats();
+    });
+
+    document.getElementById('clearFilterBtn').addEventListener('click', function () {
+        document.getElementById('fechaFiltro').value = '';
+        loadStats();
+    });
+
+    async function loadStats() {
+        const fecha = document.getElementById('fechaFiltro').value;
+        const url = fecha ? `/api/quini6/stats?fecha=${fecha}` : '/api/quini6/stats';
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('statsContainer').style.display = 'none';
+
+        try {
+            const response = await fetch(url);
+            const result = await response.json();
+
+            if (result.success) {
+                displayStats(result.data, result.cached, fecha);
+            } else {
+                showAlert('danger', 'Error: ' + result.error);
+            }
+        } catch (error) {
+            showAlert('danger', 'Error: ' + error.message);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    function displayStats(stats, cached, fecha) {
+        // Update info
+        document.getElementById('sorteosCount').textContent = stats.sorteos_count;
+        document.getElementById('subsorteosCount').textContent = stats.subsorteos_count;
+        document.getElementById('filtroInfo').textContent = fecha || 'Sin filtro';
+        document.getElementById('cacheInfo').textContent = cached ? '📦 Caché' : '🔄 Calculado';
+        document.getElementById('cacheInfo').className = cached ? 'badge bg-info' : 'badge bg-success';
+
+        // Update heatmap with fecha parameter
+        const heatmapUrl = fecha ? `/api/quini6/heatmap?fecha=${fecha}` : '/api/quini6/heatmap';
+        const separator = heatmapUrl.includes('?') ? '&' : '?';
+        document.getElementById('heatmapImg').src = heatmapUrl + separator + 't=' + new Date().getTime();
+
+        Object.values(charts).forEach(chart => chart.destroy());
+        charts = {};
+
+        const frecuencias = Object.entries(stats.frecuencias).map(([num, count]) => ({ num: parseInt(num), count }));
+        const top10Hot = frecuencias.sort((a, b) => b.count - a.count).slice(0, 10);
+        const top10Cold = frecuencias.sort((a, b) => a.count - b.count).slice(0, 10);
+
+        const omision = Object.entries(stats.omision)
+            .filter(([num, count]) => count > 0)
+            .map(([num, count]) => ({ num: parseInt(num), count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        const demora = Object.entries(stats.demora_maxima)
+            .map(([num, count]) => ({ num: parseInt(num), count }))
+            .sort((a, b) => b.count - a.count)
+            .filter(d => d.count > 0)
+            .slice(0, 10);
+
+        charts.calientes = createBarChart('calientesChart',
+            top10Hot.map(d => d.num),
+            top10Hot.map(d => d.count),
+            'Apariciones',
+            'rgba(255, 193, 7, 0.7)'
+        );
+
+        charts.frios = createBarChart('friosChart',
+            top10Cold.map(d => d.num),
+            top10Cold.map(d => d.count),
+            'Apariciones',
+            'rgba(13, 202, 240, 0.7)'
+        );
+
+        if (omision.length > 0) {
+            charts.omision = createBarChart('omisionChart',
+                omision.map(d => d.num),
+                omision.map(d => d.count),
+                'Sub-sorteos sin aparecer',
+                'rgba(108, 117, 125, 0.7)'
+            );
+        }
+
+        if (demora.length > 0) {
+            charts.demora = createBarChart('demoraChart',
+                demora.map(d => d.num),
+                demora.map(d => d.count),
+                'Sub-sorteos consecutivos',
+                'rgba(220, 53, 69, 0.7)'
+            );
+        }
+
+        document.getElementById('statsContainer').style.display = 'block';
+    }
+
+    function createBarChart(canvasId, labels, data, label, color) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.map(l => l.toString().padStart(2, '0')),
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: color,
+                    borderColor: color.replace('0.7', '1'),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function showAlert(type, message) {
+        const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+        document.getElementById('alertContainer').innerHTML = alertHtml;
+        setTimeout(() => {
+            document.getElementById('alertContainer').innerHTML = '';
+        }, 5000);
+    }
+
+    function showVerificacionModal(data) {
+        alert(`Sorteo ${data.sorteo.numero} (${data.sorteo.fecha})\\n\\nRevisa la consola para más detalles`);
+        console.log('Resultados de verificación:', data.resultados);
+    }
+
+    // ==================== SORTEOS TABLE ====================
+    let currentSorteosPage = 1;
+    let currentSorteosFilter = null;
+
+    // Load sorteos on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        loadSorteos();
+    });
+
+    // Filter button
+    document.getElementById('filterSorteosBtn').addEventListener('click', function () {
+        const fecha = document.getElementById('sorteosDateFilter').value;
+        if (fecha) {
+            currentSorteosFilter = fecha;
+            loadSorteos();
+        } else {
+            showAlert('warning', 'Por favor selecciona una fecha');
+        }
+    });
+
+    // Clear filter button
+    document.getElementById('clearSorteosFilterBtn').addEventListener('click', function () {
+        document.getElementById('sorteosDateFilter').value = '';
+        currentSorteosFilter = null;
+        currentSorteosPage = 1;
+        loadSorteos();
+    });
+
+    async function loadSorteos(page = null) {
+        let url = '/api/quini6/sorteos';
+        const params = new URLSearchParams();
+
+        if (page !== null) {
+            params.append('page', page);
+            currentSorteosPage = page;
+        } else if (currentSorteosFilter) {
+            params.append('fecha', currentSorteosFilter);
+        } else if (currentSorteosPage > 1) {
+            params.append('page', currentSorteosPage);
+        }
+
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        try {
+            const response = await fetch(url);
+            const result = await response.json();
+
+            if (result.success) {
+                currentSorteosPage = result.pagination.page;
+                displaySorteos(result.sorteos, result.pagination, result.filtered_sorteo_index);
+            } else {
+                showAlert('danger', 'Error al cargar sorteos: ' + result.error);
+            }
+        } catch (error) {
+            showAlert('danger', 'Error: ' + error.message);
+        }
+    }
+
+    function displaySorteos(sorteos, pagination, filteredIndex) {
+        const tbody = document.getElementById('sorteosTableBody');
+        tbody.innerHTML = '';
+
+        if (sorteos.length === 0) {
+            const row = tbody.insertRow();
+            row.innerHTML = '<td colspan="4" class="text-center">No hay sorteos disponibles</td>';
+            return;
+        }
+
+        sorteos.forEach((sorteo, index) => {
+            const isFiltered = filteredIndex !== null && index === filteredIndex;
+
+            // Cada sorteo ocupa 4 filas (una por modal idad)
+            const modalidades = [
+                { nombre: 'TRADICIONAL', numeros: sorteo.tradicional, class: 'table-primary' },
+                { nombre: 'SEGUNDA', numeros: sorteo.segunda, class: 'table-info' },
+                { nombre: 'REVANCHA', numeros: sorteo.revancha, class: 'table-success' },
+                { nombre: 'SIEMPRE SALE', numeros: sorteo.siempre_sale, class: 'table-warning' }
+            ];
+
+            modalidades.forEach((modalidad, modalidadIdx) => {
+                const row = tbody.insertRow();
+
+                if (isFiltered) {
+                    row.classList.add('table-warning');
+                }
+
+                // Sorteo # y Fecha solo en la primera fila
+                if (modalidadIdx === 0) {
+                    const sorteoCell = row.insertCell(0);
+                    sorteoCell.rowSpan = 4;
+                    sorteoCell.textContent = sorteo.sorteo;
+                    sorteoCell.classList.add('align-middle', 'text-center', 'fw-bold');
+                    if (isFiltered) {
+                        sorteoCell.innerHTML += ' <i class="bi bi-arrow-left-circle-fill text-primary"></i>';
+                    }
+
+                    const fechaCell = row.insertCell(1);
+                    fechaCell.rowSpan = 4;
+                    fechaCell.textContent = sorteo.fecha;
+                    fechaCell.classList.add('align-middle', 'text-center');
+                }
+
+                // Modalidad
+                const modalidadCell = row.insertCell(modalidadIdx === 0 ? 2 : 0);
+                modalidadCell.textContent = modalidad.nombre;
+                modalidadCell.classList.add(modalidad.class, 'fw-bold');
+
+                // Números
+                const numerosCell = row.insertCell(modalidadIdx === 0 ? 3 : 1);
+                modalidad.numeros.forEach(num => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary me-1 mb-1';
+                    badge.style.fontSize = '0.9rem';
+                    badge.style.minWidth = '32px';
+                    badge.textContent = num.toString().padStart(2, '0');
+                    numerosCell.appendChild(badge);
+                });
+            });
+        });
+
+        // Update pagination
+        updateSorteosPagination(pagination);
+    }
+
+    function updateSorteosPagination(pagination) {
+        const paginationEl = document.getElementById('sorteosPagination');
+        paginationEl.innerHTML = '';
+
+        // Previous button
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${!pagination.has_prev ? 'disabled' : ''}`;
+        prevLi.innerHTML = '<a class="page-link" href="#"><i class="bi bi-chevron-left"></i> Anterior</a>';
+        if (pagination.has_prev) {
+            prevLi.querySelector('a').onclick = (e) => {
+                e.preventDefault();
+                loadSorteos(pagination.page - 1);
+            };
+        }
+        paginationEl.appendChild(prevLi);
+
+        // Page info
+        const infoLi = document.createElement('li');
+        infoLi.className = 'page-item disabled';
+        infoLi.innerHTML = `<span class="page-link">Página ${pagination.page} de ${pagination.total_pages} (${pagination.total} sorteos)</span>`;
+        paginationEl.appendChild(infoLi);
+
+        // Next button
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${!pagination.has_next ? 'disabled' : ''}`;
+        nextLi.innerHTML = '<a class="page-link" href="#">Siguiente <i class="bi bi-chevron-right"></i></a>';
+        if (pagination.has_next) {
+            nextLi.querySelector('a').onclick = (e) => {
+                e.preventDefault();
+                loadSorteos(pagination.page + 1);
+            };
+        }
+        paginationEl.appendChild(nextLi);
+    }
+</script>
+{% endblock %}

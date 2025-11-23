@@ -1,0 +1,24 @@
+# docker-compose.yml for Tombola Analytics
+
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:5000"
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount visualizations directory
+      - ./visualizaciones:/app/visualizaciones
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
