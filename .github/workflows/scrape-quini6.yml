@@ -1,0 +1,30 @@
+name: Scrape Quini6
+
+on:
+  schedule:
+    # Lunes y Jueves a las 5 AM Argentina (8 AM UTC)
+    - cron: '0 8 * * 1,4'
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Scrape Quini6 Sorteo
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST https://tombola.fly.dev/api/quini6/scrape \
+            -H "X-API-Key: ${{ secrets.SCRAPE_API_KEY }}")
+          
+          http_code=$(echo "$response" | tail -n 1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Scrape failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Quini6 scrape completed successfully"

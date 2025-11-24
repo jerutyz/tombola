@@ -3,8 +3,10 @@ from collections import Counter, defaultdict
 from itertools import combinations
 import random
 from .base_game import BaseGame
+from config import DATA_DIR
 
-CSV_PATH = "data/telekino.csv"
+CSV_PATH = f"{DATA_DIR}/telekino.csv"
+
 
 
 class Telekino(BaseGame):

@@ -12,6 +12,7 @@ from tombola.quini6_verificar import verificar_jugadas
 from tombola import telekino_scraper, quini6_scraper
 from tombola.stats_cache import load_cached_stats
 import config
+from auth import require_api_key
 
 app = Flask(__name__)
 CORS(app)
@@ -92,54 +93,94 @@ def api_telekino_stats():
         }), 500
 
 @app.route('/api/telekino/scrape', methods=['POST'])
+@require_api_key
 def api_telekino_scrape():
-    """Scrape latest Telekino draw."""
+    """Scrape Telekino draw using the same logic as main.py."""
     try:
-        # Cache will auto-invalidate when new data is detected
-        
-        # Execute scraping logic
+        # Get all saved dates
         saved_dates = telekino_scraper.get_all_saved_sorteos()
-        last_telekino_date = telekino_scraper.get_last_telekino_date()
+        
+        # Get last Sunday available
+        last_sunday = telekino_scraper.get_last_sunday()
+        
+        # If it's today, go back one week (today's draw isn't available yet)
+        if last_sunday == datetime.now().date():
+            last_sunday = telekino_scraper.previous_telekino_date(last_sunday)
+        
+        # Get last saved sorteo
         last_saved = telekino_scraper.get_last_saved_sorteo()
         
         if last_saved:
             next_date = telekino_scraper.next_telekino_date(last_saved["fecha"])
             
+            # Check if we're already up-to-date going forward
+            if next_date > last_sunday:
+                # We're up-to-date, search backwards for older sorteos
+                first_saved = telekino_scraper.get_first_saved_sorteo()
+                if first_saved:
+                    prev_date = telekino_scraper.previous_telekino_date(first_saved["fecha"])
+                    
+                    # Check if already saved
+                    if prev_date in saved_dates:
+                        return jsonify({
+                            'success': True,
+                            'message': f'Already up-to-date. Sorteo {prev_date} already exists.',
+                            'direction': 'backward'
+                        })
+                    
+                    # Fetch previous sorteo
+                    result = telekino_scraper.fetch_sorteo(prev_date)
+                    if result:
+                        telekino_scraper.save_to_csv(result)
+                        return jsonify({
+                            'success': True,
+                            'message': f'Historical sorteo {result["sorteo"]} ({prev_date}) saved successfully',
+                            'sorteo': result["sorteo"],
+                            'fecha': prev_date.strftime('%Y-%m-%d'),
+                            'direction': 'backward'
+                        })
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'message': f'Sorteo for {prev_date} not found - may not be available on the web',
+                            'direction': 'backward'
+                        })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Already up-to-date and no older sorteos to fetch'
+                })
+            
+            # Check if next sorteo is already saved
             if next_date in saved_dates:
                 return jsonify({
                     'success': True,
-                    'message': f'El sorteo del {next_date} ya está guardado'
+                    'message': f'Sorteo for {next_date} already saved',
+                    'direction': 'forward'
                 })
             
+            # Fetch next sorteo (forward)
             result = telekino_scraper.fetch_sorteo(next_date)
-            if result:
-                telekino_scraper.save_to_csv(result)
-                return jsonify({
-                    'success': True,
-                    'message': f"Sorteo {result['sorteo']} ({next_date}) guardado exitosamente",
-                    'data': result
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'No se encontró el sorteo para {next_date}'
-                }), 404
         else:
-            # No hay sorteos guardados - scrapear el último disponible
-            result = telekino_scraper.fetch_sorteo(last_telekino_date)
-            if result:
-                telekino_scraper.save_to_csv(result)
-                return jsonify({
-                    'success': True,
-                    'message': f"Sorteo inicial {result['sorteo']} ({last_telekino_date}) guardado exitosamente",
-                    'data': result
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'No se pudo obtener el último sorteo disponible'
-                }), 404
-            
+            # No CSV yet, fetch the most recent sorteo available
+            next_date = last_sunday
+            result = telekino_scraper.fetch_sorteo(next_date)
+        
+        if result:
+            telekino_scraper.save_to_csv(result)
+            return jsonify({
+                'success': True,
+                'message': f'Sorteo {result["sorteo"]} ({next_date}) saved successfully',
+                'sorteo': result["sorteo"],
+                'fecha': next_date.strftime('%Y-%m-%d') if hasattr(next_date, 'strftime') else str(next_date),
+                'direction': 'forward'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Sorteo for {next_date} not found - may not be published yet'
+            })
+    
     except Exception as e:
         return jsonify({
             'success': False,
@@ -157,7 +198,7 @@ def api_telekino_sorteos():
         # Load all sorteos
         import csv
         sorteos = []
-        with open('data/telekino.csv', 'r', encoding='utf-8') as f:
+        with open(f'{config.DATA_DIR}/telekino.csv', 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if not row.get('sorteo'):
@@ -290,52 +331,95 @@ def api_quini6_stats():
         }), 500
 
 @app.route('/api/quini6/scrape', methods=['POST'])
+@require_api_key
 def api_quini6_scrape():
-    """Scrape latest Quini 6 draw."""
+    """Scrape Quini 6 draw using the same logic as main.py."""
     try:
-        # Cache will auto-invalidate when new data is detected
-        
         saved_dates = quini6_scraper.get_all_saved_sorteos()
         last_quini6_date = quini6_scraper.get_last_quini6_date()
+        
+        # If it's today, may not be published yet
+        if last_quini6_date == datetime.now().date():
+            last_quini6_date = quini6_scraper.previous_quini6_date(last_quini6_date)
+        
         last_saved = quini6_scraper.get_last_saved_sorteo()
         
         if last_saved:
             next_date = quini6_scraper.next_quini6_date(last_saved["fecha"])
             
+            # Check if we're already up-to-date
+            if next_date > last_quini6_date:
+                # We're up-to-date, search backwards for older sorteos
+                first_saved = quini6_scraper.get_first_saved_sorteo()
+                if first_saved:
+                    prev_date = quini6_scraper.previous_quini6_date(first_saved["fecha"])
+                    
+                    # Check if it's excluded
+                    if quini6_scraper.is_fecha_excluida(prev_date):
+                        # Try the previous date
+                        prev_date = quini6_scraper.previous_quini6_date(prev_date)
+                    
+                    # Check if already saved
+                    if prev_date in saved_dates:
+                        return jsonify({
+                            'success': True,
+                            'message': f'Already up-to-date. Sorteo {prev_date} already exists.',
+                            'direction': 'backward'
+                        })
+                    
+                    # Fetch previous sorteo
+                    result = quini6_scraper.fetch_sorteo(prev_date)
+                    if result:
+                        quini6_scraper.save_to_csv(result)
+                        return jsonify({
+                            'success': True,
+                            'message': f'Historical sorteo {result["sorteo"]} ({prev_date}) saved successfully',
+                            'sorteo': result["sorteo"],
+                            'fecha': prev_date.strftime('%Y-%m-%d'),
+                            'direction': 'backward'
+                        })
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'message': f'Sorteo for {prev_date} not found - may be a holiday or not published',
+                            'direction': 'backward',
+                            'fecha': prev_date.strftime('%Y-%m-%d')
+                        })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Already up-to-date and no older sorteos to fetch'
+                })
+            
+            # Check if next sorteo is already saved
             if next_date in saved_dates:
                 return jsonify({
                     'success': True,
-                    'message': f'El sorteo del {next_date} ya está guardado'
+                    'message': f'Sorteo for {next_date} already saved',
+                    'direction': 'forward'
                 })
             
+            # Fetch next sorteo (forward)
             result = quini6_scraper.fetch_sorteo(next_date)
-            if result:
-                quini6_scraper.save_to_csv(result)
-                return jsonify({
-                    'success': True,
-                    'message': f"Sorteo {result['sorteo']} ({next_date}) guardado exitosamente",
-                    'data': result
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'No se encontró el sorteo para {next_date}'
-                }), 404
         else:
-            # No hay sorteos guardados - scrapear el último disponible
-            result = quini6_scraper.fetch_sorteo(last_quini6_date)
-            if result:
-                quini6_scraper.save_to_csv(result)
-                return jsonify({
-                    'success': True,
-                    'message': f"Sorteo inicial {result['sorteo']} ({last_quini6_date}) guardado exitosamente",
-                    'data': result
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'No se pudo obtener el último sorteo disponible'
-                }), 404
+            # No CSV yet, fetch the most recent sorteo available
+            next_date = last_quini6_date
+            result = quini6_scraper.fetch_sorteo(next_date)
+        
+        if result:
+            quini6_scraper.save_to_csv(result)
+            return jsonify({
+                'success': True,
+                'message': f'Sorteo {result["sorteo"]} ({next_date}) saved successfully',
+                'sorteo': result["sorteo"],
+                'fecha': next_date.strftime('%Y-%m-%d') if hasattr(next_date, 'strftime') else str(next_date),
+                'direction': 'forward'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Sorteo for {next_date} not found - may not be published yet'
+            })
             
     except Exception as e:
         return jsonify({
@@ -414,7 +498,7 @@ def api_quini6_sorteos():
         
         import csv
         sorteos = []
-        with open('data/quini6.csv', 'r', encoding='utf-8') as f:
+        with open(f'{config.DATA_DIR}/quini6.csv', 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if not row.get('sorteo'):
@@ -553,6 +637,52 @@ def serve_visualization(filename):
     """Serve visualization images."""
     return send_from_directory(VISUALIZACIONES_DIR, filename)
 
+@app.route('/api/cache/clear', methods=['POST'])
+@require_api_key
+def api_clear_cache():
+    """Clear all cached stats and visualizations to force regeneration."""
+    try:
+        import glob
+        
+        deleted_files = {
+            'stats_cache': [],
+            'visualizaciones': []
+        }
+        
+        # Clear stats cache
+        stats_cache_pattern = os.path.join(config.STATS_CACHE_DIR, '*.json')
+        for file_path in glob.glob(stats_cache_pattern):
+            try:
+                os.remove(file_path)
+                deleted_files['stats_cache'].append(os.path.basename(file_path))
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+        
+        # Clear visualizations
+        viz_pattern = os.path.join(config.VISUALIZACIONES_DIR, '*.png')
+        for file_path in glob.glob(viz_pattern):
+            try:
+                os.remove(file_path)
+                deleted_files['visualizaciones'].append(os.path.basename(file_path))
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cache cleared successfully',
+            'deleted': {
+                'stats_cache': len(deleted_files['stats_cache']),
+                'visualizaciones': len(deleted_files['visualizaciones'])
+            },
+            'files': deleted_files
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health():
     """Health check endpoint."""
@@ -570,5 +700,10 @@ if __name__ == '__main__':
     os.makedirs(config.STATS_CACHE_DIR, exist_ok=True)
     os.makedirs(config.VISUALIZACIONES_DIR, exist_ok=True)
     
+    print("✅ App starting - automated scraping handled by GitHub Actions")
+    print("   • Telekino: Mondays at 5:00 AM")
+    print("   • Quini6: Mondays and Thursdays at 5:00 AM")
+    
     # Run development server
     app.run(host='0.0.0.0', port=8080, debug=True)
+

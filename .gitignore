@@ -1,9 +1,10 @@
 # Archivos generados (cache y visualizaciones)
-output/
+persistent/output/
 
 # My data
-data/mis_jugadas_quini6.csv
-data/mis_jugadas_telekino.csv
+persistent/data/mis_jugadas_quini6.csv
+persistent/data/mis_jugadas_telekino.csv
+
 
 # Python
 __pycache__/

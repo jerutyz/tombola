@@ -5,8 +5,9 @@ import csv
 import os
 from bs4 import BeautifulSoup
 from pathlib import Path
+from config import DATA_DIR
 
-CSV_PATH = "data/telekino.csv"
+CSV_PATH = f"{DATA_DIR}/telekino.csv"
 
 def get_last_saved_sorteo():
     """Devuelve el último sorteo guardado (el más reciente por fecha)."""
@@ -243,7 +244,7 @@ def extract_sorteo_from_html(html, date):
 
 def save_to_csv(result):
     # Crea carpeta data si no existe
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     # Headers
     headers = ["sorteo", "fecha"] + [f"n{i}" for i in range(1,16)]

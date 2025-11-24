@@ -4,8 +4,10 @@ from collections import Counter, defaultdict
 from itertools import combinations
 import random
 from .base_game import BaseGame
+from config import DATA_DIR
 
-CSV_PATH = "data/quini6.csv"
+CSV_PATH = f"{DATA_DIR}/quini6.csv"
+
 
 
 class Quini6(BaseGame):

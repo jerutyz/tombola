@@ -1,9 +1,10 @@
 # tombola/quini6_verificar.py
 import csv
 from datetime import datetime
+from config import DATA_DIR
 
-MIS_JUGADAS_PATH = "data/mis_jugadas_quini6.csv"
-SORTEOS_PATH = "data/quini6.csv"
+MIS_JUGADAS_PATH = f"{DATA_DIR}/mis_jugadas_quini6.csv"
+SORTEOS_PATH = f"{DATA_DIR}/quini6.csv"
 
 
 def cargar_mis_jugadas():

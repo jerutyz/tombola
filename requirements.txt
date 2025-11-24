@@ -6,4 +6,5 @@ pandas
 flask
 flask-cors
 gunicorn
-
+python-dotenv
+apscheduler

@@ -7,9 +7,14 @@ from collections import Counter
 import csv
 from datetime import datetime
 import os
+import sys
 
-CSV_PATH = "data/telekino.csv"
-OUTPUT_DIR = "visualizaciones"
+# Add parent directory to path to import config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import DATA_DIR, VISUALIZACIONES_DIR
+
+CSV_PATH = f"{DATA_DIR}/telekino.csv"
+OUTPUT_DIR = VISUALIZACIONES_DIR
 
 
 def cargar_datos(fecha_limite=None):

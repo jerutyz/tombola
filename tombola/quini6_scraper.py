@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 import csv
 import os
 from bs4 import BeautifulSoup
+from config import DATA_DIR
 
-CSV_PATH = "data/quini6.csv"
-FECHAS_EXCLUIDAS_PATH = "data/quini6_fechas_excluidas.txt"
+CSV_PATH = f"{DATA_DIR}/quini6.csv"
+FECHAS_EXCLUIDAS_PATH = f"{DATA_DIR}/quini6_fechas_excluidas.txt"
 
 def get_last_saved_sorteo():
     """Devuelve el último sorteo guardado (el más reciente por fecha)."""
@@ -281,7 +282,7 @@ def extract_sorteo_from_html(html, date):
 
 def save_to_csv(result):
     """Guarda un sorteo en el CSV ordenados por fecha."""
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     # Headers
     headers = ["sorteo", "fecha"] + \
