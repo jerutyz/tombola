@@ -87,6 +87,97 @@ docker pull yourregistry/tombola-analytics:latest
 docker-compose up -d
 ```
 
+## ✈️ Deployment a Fly.io
+
+### Pre-requisitos
+
+1. Instala la CLI de Fly.io:
+   ```bash
+   # macOS
+   brew install flyctl
+   
+   # Linux/WSL
+   curl -L https://fly.io/install.sh | sh
+   ```
+
+2. Autentícate en Fly.io:
+   ```bash
+   fly auth login
+   ```
+
+### Deploy Inicial (Primera vez)
+
+Si es tu primera vez deployando esta app:
+
+```bash
+# Crear app en Fly.io (solo primera vez)
+fly launch --no-deploy
+
+# Configurar secrets (API key)
+fly secrets set API_KEY=tu_clave_secreta
+
+# Crear volumen persistente para datos
+fly volumes create persistent --size 1
+
+# Deploy
+fly deploy
+```
+
+### Deploy de Actualizaciones
+
+Para deployar cambios después de la configuración inicial:
+
+```bash
+# Deploy de la nueva versión
+fly deploy
+
+# Ver estado del deploy
+fly status
+
+# Ver logs en tiempo real
+fly logs
+```
+
+### Comandos Útiles
+
+```bash
+# Ver logs
+fly logs
+
+# Ver estado de la app
+fly status
+
+# Ver secrets configurados
+fly secrets list
+
+# Agregar/actualizar un secret
+fly secrets set NOMBRE=valor
+
+# SSH a la máquina
+fly ssh console
+
+# Escalar recursos
+fly scale memory 512    # MB
+fly scale count 1       # Número de instancias
+
+# Ver dominios
+fly info
+```
+
+### Verificar Deployment
+
+Después del deploy, verifica que todo funcione:
+
+1. **Health Check**: `https://tu-app.fly.dev/health`
+2. **Web App**: `https://tu-app.fly.dev`
+
+### Notas Importantes
+
+- **Volumen Persistente**: Los datos CSV se guardan en `/app/persistent` y persisten entre deploys
+- **Auto Sleep**: La app se suspende automáticamente cuando no tiene tráfico y se reactiva al recibir requests
+- **HTTPS**: Fly.io provee HTTPS automático
+- **Región**: Configurado en `dfw` (Dallas), puedes cambiarlo en `fly.toml`
+
 ## 📡 API Endpoints
 
 ### Telekino
