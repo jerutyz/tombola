@@ -42,6 +42,53 @@
     <p class="mt-2">Cargando estadísticas...</p>
 </div>
 
+<!-- Check Combination Section -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="bi bi-search"></i> Verificar Jugada Histórica
+    </div>
+    <div class="card-body">
+        <p class="text-muted small">Ingresa los 15 números (1-25) para verificar si esta combinación ha salido alguna
+            vez.</p>
+        <div class="row g-2 mb-3">
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+            <div class="col-3 col-md-2"><input type="number" class="form-control text-center check-num" min="1" max="25"
+                    placeholder="00"></div>
+        </div>
+        <button class="btn btn-primary w-100" id="checkCombinationBtn">
+            Verificar Combinación
+        </button>
+        <div id="checkResult" class="mt-3" style="display: none;"></div>
+    </div>
+</div>
+
 <!-- Stats Container -->
 <div id="statsContainer" style="display: none;">
     <!-- Info Card -->
@@ -475,5 +522,66 @@
         }
         paginationEl.appendChild(nextLi);
     }
+    // ==================== CHECK COMBINATION ====================
+    document.getElementById('checkCombinationBtn').addEventListener('click', async function () {
+        const inputs = document.querySelectorAll('.check-num');
+        const numeros = Array.from(inputs).map(input => parseInt(input.value)).filter(n => !isNaN(n));
+
+        if (numeros.length !== 15) {
+            showAlert('warning', `Se requieren 15 números. Encontrados: ${numeros.length}`);
+            return;
+        }
+
+        // Validation: Range 1-25 and Duplicates
+        const invalidRange = numeros.some(n => n < 1 || n > 25);
+        if (invalidRange) {
+            showAlert('warning', 'Los números deben estar entre 1 y 25.');
+            return;
+        }
+
+        const uniqueNumeros = new Set(numeros);
+        if (uniqueNumeros.size !== 15) {
+            showAlert('warning', 'No puede haber números repetidos.');
+            return;
+        }
+
+        const resultDiv = document.getElementById('checkResult');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Verificando...';
+
+        try {
+            const response = await fetch('/api/telekino/check-combination', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ numeros: numeros })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                if (result.found) {
+                    let html = `<div class="alert alert-warning">
+                        <strong>⚠️ ¡Combinación encontrada!</strong><br>
+                        Esta jugada ha salido ${result.occurrences.length} veces:
+                        <ul class="mb-0 mt-2">`;
+
+                    result.occurrences.forEach(occ => {
+                        html += `<li>${occ.fecha} (Sorteo ${occ.sorteo})</li>`;
+                    });
+
+                    html += `</ul></div>`;
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-success">
+                        <strong>✅ ¡Combinación única!</strong><br>
+                        Esta combinación nunca ha salido en la historia registrada.
+                    </div>`;
+                }
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Error de conexión: ${error.message}</div>`;
+        }
+    });
 </script>
 {% endblock %}

@@ -215,5 +215,62 @@ def _print_quini6_stats(stats, fecha_limite):
         print(f"{pair_str}: {veces} veces")
 
 
+
+def check_repeated_combinations():
+    """
+    Verifica si alguna combinación de 6 números se ha repetido en la historia.
+    Revisa todas las modalidades: Tradicional, Segunda, Revancha, Siempre Sale.
+    """
+    print("\n🔍 Buscando combinaciones repetidas en todo el histórico...")
+    
+    # Cargar datos sin filtrar por fecha
+    sorteos, _ = load_data(fecha_limite=None)
+    
+    # Diccionario para rastrear combinaciones: tuple(sorted_nums) -> list of occurrences
+    # Cada ocurrencia será un dict con detalles: {fecha, sorteo, modalidad}
+    history = defaultdict(list)
+    
+    modalities = ["Tradicional", "La Segunda", "Revancha", "Siempre Sale"]
+    
+    count_total = 0
+    
+    for row in sorteos:
+        fecha = row['fecha']
+        nro_sorteo = row['sorteo']
+        
+        # Extraer las 4 combinaciones del sorteo
+        combs = []
+        combs.append(tuple(sorted([int(row[f"t{i}"]) for i in range(1, 7)])))
+        combs.append(tuple(sorted([int(row[f"s{i}"]) for i in range(1, 7)])))
+        combs.append(tuple(sorted([int(row[f"r{i}"]) for i in range(1, 7)])))
+        combs.append(tuple(sorted([int(row[f"ss{i}"]) for i in range(1, 7)])))
+        
+        for i, nums in enumerate(combs):
+            modality = modalities[i]
+            history[nums].append({
+                "fecha": fecha,
+                "sorteo": nro_sorteo,
+                "modalidad": modality
+            })
+            count_total += 1
+
+    print(f"Analizadas {count_total} jugadas individuales en {len(sorteos)} sorteos.")
+    
+    # Filtrar las que tienen más de 1 aparición
+    repeats = {k: v for k, v in history.items() if len(v) > 1}
+    
+    if not repeats:
+        print("\n✅ ¡Increíble! No se encontraron combinaciones repetidas en la historia.")
+    else:
+        print(f"\n⚠️  Se encontraron {len(repeats)} combinaciones repetidas:\n")
+        for nums, occurrences in repeats.items():
+            nums_str = ", ".join(map(str, nums))
+            print(f"🔢 Combinación: [{nums_str}]")
+            print(f"   Apareció {len(occurrences)} veces:")
+            for occ in occurrences:
+                print(f"   • {occ['fecha']} (Sorteo {occ['sorteo']}) - {occ['modalidad']}")
+            print("-" * 50)
+
+
 if __name__ == "__main__":
     procesar_estadisticas()

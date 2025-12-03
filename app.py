@@ -120,6 +120,11 @@ def api_telekino_scrape():
                 if first_saved:
                     prev_date = telekino_scraper.previous_telekino_date(first_saved["fecha"])
                     
+                    # Check if it's excluded
+                    if telekino_scraper.is_fecha_excluida(prev_date):
+                        # Try the previous date
+                        prev_date = telekino_scraper.previous_telekino_date(prev_date)
+                    
                     # Check if already saved
                     if prev_date in saved_dates:
                         return jsonify({
@@ -143,7 +148,8 @@ def api_telekino_scrape():
                         return jsonify({
                             'success': False,
                             'message': f'Sorteo for {prev_date} not found - may not be available on the web',
-                            'direction': 'backward'
+                            'direction': 'backward',
+                            'fecha': prev_date.strftime('%Y-%m-%d')
                         })
                 
                 return jsonify({
@@ -186,6 +192,74 @@ def api_telekino_scrape():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/telekino/excluded-dates', methods=['GET', 'POST'])
+@require_api_key
+def api_telekino_excluded_dates():
+    """Manage excluded dates for Telekino."""
+    try:
+        if request.method == 'GET':
+            dates = []
+            if os.path.exists(telekino_scraper.FECHAS_EXCLUIDAS_PATH):
+                with open(telekino_scraper.FECHAS_EXCLUIDAS_PATH, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            dates.append(line)
+            return jsonify({'success': True, 'dates': sorted(dates, reverse=True)})
+        
+        elif request.method == 'POST':
+            data = request.get_json()
+            fecha = data.get('fecha')
+            if not fecha:
+                return jsonify({'success': False, 'error': 'Fecha is required'}), 400
+            
+            # Validate date format
+            try:
+                datetime.strptime(fecha, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+            
+            telekino_scraper.agregar_fecha_excluida(fecha)
+            return jsonify({'success': True, 'message': f'Date {fecha} added to excluded list'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/telekino/check-combination', methods=['POST'])
+def api_telekino_check_combination():
+    """Check if a Telekino combination has appeared in history."""
+    try:
+        data = request.get_json()
+        numeros = data.get('numeros')
+        
+        if not numeros or not isinstance(numeros, list) or len(numeros) != 15:
+            return jsonify({'success': False, 'error': 'Se requieren exactamente 15 números'}), 400
+        
+        # Normalize input
+        target_tuple = tuple(sorted([int(n) for n in numeros]))
+        
+        # Load data
+        from tombola.telekino import load_data
+        sorteos, numeros_por_sorteo = load_data(fecha_limite=None)
+        
+        occurrences = []
+        for i, row in enumerate(sorteos):
+            nums = tuple(sorted(numeros_por_sorteo[i]))
+            if nums == target_tuple:
+                occurrences.append({
+                    "fecha": row['fecha'],
+                    "sorteo": row['sorteo']
+                })
+        
+        return jsonify({
+            'success': True,
+            'found': len(occurrences) > 0,
+            'occurrences': occurrences
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/telekino/sorteos', methods=['GET'])
 def api_telekino_sorteos():
@@ -426,6 +500,84 @@ def api_quini6_scrape():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/quini6/excluded-dates', methods=['GET', 'POST'])
+@require_api_key
+def api_quini6_excluded_dates():
+    """Manage excluded dates for Quini 6."""
+    try:
+        if request.method == 'GET':
+            dates = []
+            if os.path.exists(quini6_scraper.FECHAS_EXCLUIDAS_PATH):
+                with open(quini6_scraper.FECHAS_EXCLUIDAS_PATH, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            dates.append(line)
+            return jsonify({'success': True, 'dates': sorted(dates, reverse=True)})
+        
+        elif request.method == 'POST':
+            data = request.get_json()
+            fecha = data.get('fecha')
+            if not fecha:
+                return jsonify({'success': False, 'error': 'Fecha is required'}), 400
+            
+            # Validate date format
+            try:
+                datetime.strptime(fecha, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+            
+            quini6_scraper.agregar_fecha_excluida(fecha)
+            return jsonify({'success': True, 'message': f'Date {fecha} added to excluded list'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/quini6/check-combination', methods=['POST'])
+def api_quini6_check_combination():
+    """Check if a Quini 6 combination has appeared in history."""
+    try:
+        data = request.get_json()
+        numeros = data.get('numeros')
+        
+        if not numeros or not isinstance(numeros, list) or len(numeros) != 6:
+            return jsonify({'success': False, 'error': 'Se requieren exactamente 6 números'}), 400
+        
+        # Normalize input
+        target_tuple = tuple(sorted([int(n) for n in numeros]))
+        
+        # Load data
+        from tombola.quini6 import load_data
+        sorteos, _ = load_data(fecha_limite=None)
+        
+        modalities = ["Tradicional", "La Segunda", "Revancha", "Siempre Sale"]
+        occurrences = []
+        
+        for row in sorteos:
+            # Extract the 4 combinations
+            combs = []
+            combs.append(tuple(sorted([int(row[f"t{i}"]) for i in range(1, 7)])))
+            combs.append(tuple(sorted([int(row[f"s{i}"]) for i in range(1, 7)])))
+            combs.append(tuple(sorted([int(row[f"r{i}"]) for i in range(1, 7)])))
+            combs.append(tuple(sorted([int(row[f"ss{i}"]) for i in range(1, 7)])))
+            
+            for i, nums in enumerate(combs):
+                if nums == target_tuple:
+                    occurrences.append({
+                        "fecha": row['fecha'],
+                        "sorteo": row['sorteo'],
+                        "modalidad": modalities[i]
+                    })
+        
+        return jsonify({
+            'success': True,
+            'found': len(occurrences) > 0,
+            'occurrences': occurrences
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/quini6/verificar', methods=['GET'])
 def api_quini6_verificar():

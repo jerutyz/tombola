@@ -217,5 +217,49 @@ def _print_telekino_stats(stats, fecha_limite):
         print(f"{pair_str}: {veces} veces")
 
 
+
+def check_repeated_combinations():
+    """
+    Verifica si alguna combinación de 15 números se ha repetido en la historia del Telekino.
+    """
+    print("\n🔍 Buscando combinaciones repetidas en todo el histórico de Telekino...")
+    
+    # Cargar datos sin filtrar por fecha
+    sorteos, numeros_por_sorteo = load_data(fecha_limite=None)
+    
+    # Diccionario para rastrear combinaciones: tuple(sorted_nums) -> list of occurrences
+    history = defaultdict(list)
+    
+    count_total = 0
+    
+    for i, row in enumerate(sorteos):
+        fecha = row['fecha']
+        nro_sorteo = row['sorteo']
+        nums = tuple(sorted(numeros_por_sorteo[i]))
+        
+        history[nums].append({
+            "fecha": fecha,
+            "sorteo": nro_sorteo
+        })
+        count_total += 1
+
+    print(f"Analizados {count_total} sorteos.")
+    
+    # Filtrar las que tienen más de 1 aparición
+    repeats = {k: v for k, v in history.items() if len(v) > 1}
+    
+    if not repeats:
+        print("\n✅ ¡Increíble! No se encontraron combinaciones repetidas en la historia del Telekino.")
+    else:
+        print(f"\n⚠️  Se encontraron {len(repeats)} combinaciones repetidas:\n")
+        for nums, occurrences in repeats.items():
+            nums_str = ", ".join(map(str, nums))
+            print(f"🔢 Combinación: [{nums_str}]")
+            print(f"   Apareció {len(occurrences)} veces:")
+            for occ in occurrences:
+                print(f"   • {occ['fecha']} (Sorteo {occ['sorteo']})")
+            print("-" * 50)
+
+
 if __name__ == "__main__":
     procesar_estadisticas()

@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.
 warnings.filterwarnings("ignore", message=".*NotOpenSSLWarning.*")
 
 
-from tombola.telekino import Telekino
+from tombola.telekino import Telekino, check_repeated_combinations as check_repeated_combinations_telekino
 from analysis.simulator import run_simulations
 from tombola.telekino_scraper import (
     fetch_last_sorteo, save_to_csv, get_last_saved_sorteo, 
@@ -19,7 +19,7 @@ from tombola.telekino_scraper import (
 from tombola.telekino import procesar_estadisticas
 
 # Quini 6 imports
-from tombola.quini6 import Quini6, procesar_estadisticas as procesar_estadisticas_quini6
+from tombola.quini6 import Quini6, procesar_estadisticas as procesar_estadisticas_quini6, check_repeated_combinations as check_repeated_combinations_quini6
 import tombola.quini6_scraper as q6_scraper
 from tombola.quini6_verificar import verificar_jugadas
 
@@ -179,6 +179,9 @@ def telekino_visualizar():
     from analysis.visualizacion_telekino import crear_visualizaciones as crear_visualizaciones_telekino
     crear_visualizaciones_telekino()
 
+def telekino_check():
+    check_repeated_combinations_telekino()
+
 def quini6_stats(fecha_limite=None):
     procesar_estadisticas_quini6(fecha_limite)
 
@@ -189,6 +192,9 @@ def quini6_visualizar():
     from analysis.visualizacion_quini6 import crear_visualizaciones
     crear_visualizaciones()
 
+def quini6_check():
+    check_repeated_combinations_quini6()
+
 def help():
     print("""
 Comandos disponibles:
@@ -198,12 +204,14 @@ Comandos disponibles:
   python main.py telekino stats [YYYY-MM-DD]  → calcula estadísticas del Telekino
   python main.py telekino visualizar          → genera mapas de calor y gráficos
   python main.py telekino simulate            → corre simulación Monte Carlo
+  python main.py telekino check               → busca combinaciones repetidas en la historia
   
   QUINI 6:
   python main.py quini6 scrape                → scrapea el último sorteo Quini 6
   python main.py quini6 stats [YYYY-MM-DD]    → calcula estadísticas del Quini 6
   python main.py quini6 verificar             → verifica tus jugadas contra el último sorteo
   python main.py quini6 visualizar            → genera mapas de calor y gráficos
+  python main.py quini6 check                 → busca combinaciones repetidas en la historia
   
   📅 BACKTESTING:
   Agrega una fecha opcional a 'stats' para ver estadísticas históricas.
@@ -244,9 +252,11 @@ if __name__ == "__main__":
             telekino_visualizar()
         elif command == "simulate":
             simulate()
+        elif command == "check":
+            telekino_check()
         else:
             print(f"❌ Comando '{command}' no válido para telekino")
-            print("Comandos válidos: scrape, stats [YYYY-MM-DD], visualizar, simulate")
+            print("Comandos válidos: scrape, stats [YYYY-MM-DD], visualizar, simulate, check")
             sys.exit(1)
     
     # Quini 6 commands
@@ -259,9 +269,11 @@ if __name__ == "__main__":
             quini6_verificar()
         elif command == "visualizar":
             quini6_visualizar()
+        elif command == "check":
+            quini6_check()
         else:
             print(f"❌ Comando '{command}' no válido para quini6")
-            print("Comandos válidos: scrape, stats [YYYY-MM-DD], verificar, visualizar")
+            print("Comandos válidos: scrape, stats [YYYY-MM-DD], verificar, visualizar, check")
             sys.exit(1)
     
     else:

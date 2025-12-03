@@ -8,6 +8,40 @@ from pathlib import Path
 from config import DATA_DIR
 
 CSV_PATH = f"{DATA_DIR}/telekino.csv"
+FECHAS_EXCLUIDAS_PATH = f"{DATA_DIR}/telekino_fechas_excluidas.txt"
+
+def is_fecha_excluida(fecha):
+    """Verifica si una fecha está en la lista de excluidos."""
+    if not os.path.exists(FECHAS_EXCLUIDAS_PATH):
+        return False
+    
+    fecha_str = str(fecha)
+    with open(FECHAS_EXCLUIDAS_PATH, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                if line == fecha_str:
+                    return True
+    return False
+
+
+def agregar_fecha_excluida(fecha):
+    """Agrega una fecha a la lista de excluidos."""
+    fecha_str = str(fecha)
+    
+    # Crear archivo si no existe
+    if not os.path.exists(FECHAS_EXCLUIDAS_PATH):
+        with open(FECHAS_EXCLUIDAS_PATH, 'w') as f:
+            f.write("# Fechas sin sorteo de Telekino\n")
+            f.write("# Una fecha por línea en formato YYYY-MM-DD\n\n")
+    
+    # Verificar si ya está
+    if is_fecha_excluida(fecha):
+        return
+    
+    # Agregar la fecha
+    with open(FECHAS_EXCLUIDAS_PATH, 'a') as f:
+        f.write(f"{fecha_str}\n")
 
 def get_last_saved_sorteo():
     """Devuelve el último sorteo guardado (el más reciente por fecha)."""
