@@ -1,5 +1,5 @@
 # app.py - Flask Web Application for Tombola Analytics
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 import os
 import json
@@ -349,6 +349,31 @@ def api_telekino_sorteos():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/telekino/download', methods=['GET'])
+def api_telekino_download():
+    """Download Telekino CSV file."""
+    try:
+        csv_path = os.path.join(config.DATA_DIR, 'telekino.csv')
+        
+        if not os.path.exists(csv_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo de datos no encontrado'
+            }), 404
+        
+        return send_file(
+            csv_path,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='telekino_resultados.csv'
+        )
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 # ==================== API ENDPOINTS - QUINI 6 ====================
 
@@ -707,6 +732,31 @@ def api_quini6_sorteos():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/quini6/download', methods=['GET'])
+def api_quini6_download():
+    """Download Quini 6 CSV file."""
+    try:
+        csv_path = os.path.join(config.DATA_DIR, 'quini6.csv')
+        
+        if not os.path.exists(csv_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo de datos no encontrado'
+            }), 404
+        
+        return send_file(
+            csv_path,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='quini6_resultados.csv'
+        )
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 @app.route('/api/telekino/heatmap', methods=['GET'])
 def api_telekino_heatmap():
